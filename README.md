@@ -64,11 +64,15 @@ R code with functions that were used for simulations and data analysis in the pa
 **RunTimePlot_range_6482.Rda** - saved results to plot run time versus dimension in log10 scale for the sample size 6482.
 
 
+**AGP_prunedata.R** - how to load and clean Americun Gut Project data.
+
 **amgutpruned.rdata** - American Gut Project microbiome data.
+
+**TCGA_dataloading.R** - how to load and clean gene expression and microRNA data from TCGA-BRCA data portal.
 
 **matchedTCGA.Rdata** - saved gene expression and microRNA from TCGA-BRCA.
 
-**DataLoading.R** - how to load and clean gene expression and microRNA data from TCGA-BRCA data portal.
+
 
 
 
