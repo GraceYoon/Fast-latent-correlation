@@ -8,6 +8,8 @@ R code with functions that were used for simulations and data analysis in the pa
 
 **3dfigure1.R** - 3D-figure of bridge inverse function for TC case.
 
+**Delta_vs_Zeroprop.R** - generate a figure showing the relationship between latent cutoff Delta and zero proportion of data. Basically inverse of normal cdf.
+
 **Twovariable_simulation.R** - Simulation to save results of computation time and errors between two variables in all different type combinations. Tried 
 
 **Twovariable_simulation_functions.R** - Wrapper functions for the simulation between two synthetic variables.
@@ -19,6 +21,8 @@ R code with functions that were used for simulations and data analysis in the pa
 **accuracy_realdata.R** - Check accuracy of three real data: QMP, AGP, TCGA-BRCA, and graphical model estimation on QMP data
 
 **microbenchmark_realdata.R** - Check computation time of three real data: QMP, AGP, TCGA-BRCA, and graphical model estimation on QMP data
+
+**SPRING_v2.R** - For sparse graphical model estimation with fast approximation version of rank-based correlation estimation, [SPRING R package]( https://github.com/GraceYoon/SPRING) is revised with the updated version of `estimateR`. 
 
 
 ### Supporting data and precomputed results are in the folder **Data**:
