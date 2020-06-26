@@ -1,7 +1,7 @@
 # Fast-latent-correlation
 
 
-R code with functions that were used for simulations and data analysis in the paper ["Fast computation of latent correlations" by Grace Yoon, Christian L. Muuml;ller and Irina Gaynanova](https://arxiv.org/abs/2006.13875).
+R code with functions that were used for simulations and data analysis in the paper ["Fast computation of latent correlations" by Grace Yoon, Christian L. M&uuml;ller and Irina Gaynanova](https://arxiv.org/abs/2006.13875).
 
 
 ### Simulation scripts
