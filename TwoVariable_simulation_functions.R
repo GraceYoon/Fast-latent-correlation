@@ -1,4 +1,4 @@
-# Chapter 4. Comparison on simulated data
+# Section 4. Comparison on simulated data
 # In mixedCCA R package, there is no option whether we want to use ML or MLBD.
 # Here, the following functions for ML.
 # most of the parts are copied from mixedCCA R package but removed the "cutoff" part.

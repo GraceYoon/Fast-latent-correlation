@@ -1,4 +1,4 @@
-# Chapter 4. Comparison on simulated data
+# Section 4. Comparison on simulated data
 # This is for two variables.
 
 rm(list=ls())
@@ -110,7 +110,7 @@ for (cases in 1:5){
             Kcor_org[i] <- estimateR_mixed(X1 = x1, X2 = x2, type1 = type1, type2 = type2, method = "original")$R12,
             Kcor_ml[i] <- estimateR_mixed_mlonly(x1, x2, type1 = type1, type2 = type2)$R12,
             Kcor_mlbd[i] <- estimateR_mixed(X1 = x1, X2 = x2, type1 = type1, type2 = type2, method = "approx")$R12,
-            times = 1
+            times = 1 # tried 10 and saved the results in file names ends with "_rep10.Rda" in Data folder.
           ), unit = "us")[, 5] # to use fixed unit: "microseconds"
           # 5th column has median value
         )
