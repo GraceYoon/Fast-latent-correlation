@@ -67,7 +67,7 @@ dfall$pd[dfall$method == "Kendall" & dfall$sampsize == 6482] # 0.01
 
 
 
-pdf(file = "RunTimePlot_v2_loglog.pdf", height = 6, width = 8)
+pdf(file = "Figures/RunTimePlot_v2_loglog.pdf", height = 6, width = 8)
 
 dfall %>% filter(dfall$dim > 10) %>% # smaller dimension less than 20 is omitted.
   ggplot(aes(x = log10(dim) + 1.5*pd, y = log10(timemed), fill = method, group = interaction(method, sampsize))) + ylab("log10 of Computation Time (in seconds)") + geom_errorbar(aes(ymin = log10(timemin), ymax = log10(timemax), colour = method), width = 0.05) + geom_line(aes(colour = method, linetype = sampsize)) + geom_point(aes(colour = method)) + scale_colour_manual("Method", values = gg_color_hue(3), labels = c("ORG", "MLBD", "Kendall")) + scale_fill_manual("Method", values = gg_color_hue(3), labels = c("ORG", "MLBD", "Kendall")) + scale_linetype_discrete("Sample Size") + scale_x_continuous(name = "log10 of Dimension", breaks = log10(plist[-c(1:3)]), labels = paste0("log10 (", plist[-c(1:3)], ")")) + theme(text = element_text(size = 18), axis.text.x = element_text(angle = 45, vjust = 1.1, hjust = 1))
