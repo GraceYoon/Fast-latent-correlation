@@ -12,6 +12,8 @@ load("Functions/sysdata.rda") # the same saved precomputed values as in mixedCCA
 fromKtoR_ml_nocutoff <- function(K, zratio = NULL, type = "trunc", tol = 1e-3) {
   K <- as.matrix(K)
   d1 <- nrow(K)
+  # adjust for 1 dimensional case
+  if (d1 == 1){return(as.matrix(1))}
   # K is d1 by d1 square matrix. zratio should be a vector of length d1. If the type is "continuous", no input is necessary for zratio.
   
   if (type == "continuous") {
@@ -23,6 +25,21 @@ fromKtoR_ml_nocutoff <- function(K, zratio = NULL, type = "trunc", tol = 1e-3) {
     
     # based on the data type, select bridgeInv and cutoff functions.
     bridgeInv <- bridgeInv_select(type1 = type, type2 = type)
+    
+    #### TODO
+    #### This is where preprocessing should be happening, not in bridgeInv but here; bridgeInv should just be applied based on vector values taus, and corresponding vector valued zratio1, zratio2 as appropriate
+    ####
+    # kupper <- K[upper.tri(K)] # it expands it columnwise so need to figure out corresponding expansion for zratio
+    # # easy fix
+    # zratio1M <- matrix(zratio, d1, d1)
+    # zratio2M <- matrix(zratio, d1, d1, byrow = T)
+    # zratio1upper <- zratio1M[upper.tri(zratio1M)]
+    # zratio2upper <- zratio2M[upper.tri(zratio2M)]
+    # Rupper <- bridgeInv(kupper, zratio1 = zratio1upper, zratio2 = zratio2upper)
+    # hatR = matrix(0, d1, d1)
+    # hatR[upper.tri(hatR)] = Rupper
+    # hatR = hatR + t(hatR)
+    # diag(hatR) = 1
     
     # much faster multi-linear interpolation part using saved ipol function.
     hatR <- bridgeInv(K, zratio1 = zratio, zratio2 = zratio)
