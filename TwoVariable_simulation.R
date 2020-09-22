@@ -7,7 +7,7 @@ library(chebpol)
 library(microbenchmark)
 library(mixedCCA)
 
-source("TwoVariable_simulation_symmZR_functions.R")
+source("TwoVariable_simulation_functions.R")
 
 
 # setup for 100 replication.
@@ -52,7 +52,7 @@ for (cases in 1:5){
       Kcor_org <- Kcor_ml <- Kcor_mlbd <- rep(NA, nrep)
       time_org <- time_ml <- time_mlbd <- rep(NA, nrep)
       time_all <- matrix(NA, nrow = nrep, ncol = 3)
-      dataset <- list()
+      dataset <- list() # WHAT Is THIS FOR?
       
       ptm <- proc.time()
       set.seed(123)
@@ -105,12 +105,13 @@ for (cases in 1:5){
         x1 <- u1
         x2 <- u2
         
+        
         capture.output( # suppress the microbenchmark result.
           time_all[i, ] <- print(microbenchmark(
-            Kcor_org[i] <- estimateR_mixed(X1 = x1, X2 = x2, type1 = type1, type2 = type2, method = "original")$R12,
-            Kcor_ml[i] <- estimateR_mixed_mlonly(x1, x2, type1 = type1, type2 = type2)$R12,
-            Kcor_mlbd[i] <- estimateR_mixed(X1 = x1, X2 = x2, type1 = type1, type2 = type2, method = "approx")$R12,
-            times = 1 # tried 10 and saved the results in file names ends with "_rep10.Rda" in Data folder.
+            Kcor_org[i] <- estimateR_mixed(X1 = x1, X2 = x2, type1 = type1, type2 = type2, method = "original", nu = 0)$R12,
+            Kcor_ml[i] <- estimateR_mixed_mlonly(X1 = x1, X2 = x2, type1 = type1, type2 = type2, nu = 0)$R12,
+            Kcor_mlbd[i] <- estimateR_mixed(X1 = x1, X2 = x2, type1 = type1, type2 = type2, method = "approx", nu = 0)$R12,
+            times = 10 # tried 10 and saved the results in file names ends with "_rep10.Rda" in Data folder.
           ), unit = "us")[, 5] # to use fixed unit: "microseconds"
           # 5th column has median value
         )
