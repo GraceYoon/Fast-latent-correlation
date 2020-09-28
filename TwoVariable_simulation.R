@@ -5,6 +5,7 @@ rm(list=ls())
 
 library(chebpol)
 library(microbenchmark)
+# devtools::install_github("irinagain/mixedCCA", force = TRUE) # version 1.4.1
 library(mixedCCA)
 
 source("TwoVariable_simulation_functions.R")
@@ -18,7 +19,7 @@ n <- 100
 
 # will test 9 latent r and 11 zero proportion values.
 latentRseq <- seq(0.05, 0.91, length.out = 9)
-zratioseq <- seq(0.03, 0.97, length.out = 11)
+zratioseq <- c(0.04, 0.16, 0.28, 0.36, 0.44, 0.5, 0.56, 0.64, 0.72, 0.84, 0.96)
 
 
 ##### check five cases of TC, TT, BC, BB, TB
@@ -52,7 +53,6 @@ for (cases in 1:5){
       Kcor_org <- Kcor_ml <- Kcor_mlbd <- rep(NA, nrep)
       time_org <- time_ml <- time_mlbd <- rep(NA, nrep)
       time_all <- matrix(NA, nrow = nrep, ncol = 3)
-      dataset <- list() # WHAT Is THIS FOR?
       
       ptm <- proc.time()
       set.seed(123)
@@ -108,10 +108,10 @@ for (cases in 1:5){
         
         capture.output( # suppress the microbenchmark result.
           time_all[i, ] <- print(microbenchmark(
-            Kcor_org[i] <- estimateR_mixed(X1 = x1, X2 = x2, type1 = type1, type2 = type2, method = "original", nu = 0)$R12,
+            Kcor_org[i] <- estimateR_mixed(X1 = x1, X2 = x2, type1 = type1, type2 = type2, method = "original", nu = 0, tol = 1e-6)$R12,
             Kcor_ml[i] <- estimateR_mixed_mlonly(X1 = x1, X2 = x2, type1 = type1, type2 = type2, nu = 0)$R12,
-            Kcor_mlbd[i] <- estimateR_mixed(X1 = x1, X2 = x2, type1 = type1, type2 = type2, method = "approx", nu = 0)$R12,
-            times = 10 # tried 10 and saved the results in file names ends with "_rep10.Rda" in Data folder.
+            Kcor_mlbd[i] <- estimateR_mixed(X1 = x1, X2 = x2, type1 = type1, type2 = type2, method = "approx", nu = 0, tol = 1e-6)$R12,
+            times = 10 # tried ten times
           ), unit = "us")[, 5] # to use fixed unit: "microseconds"
           # 5th column has median value
         )
@@ -128,7 +128,7 @@ for (cases in 1:5){
   }
   
   
-  save(df_comptime, df_accuracy, file = paste0("Data/TwoSimVariable", typesh, "_symmZR.Rda"))
+  save(df_comptime, df_accuracy, file = paste0("Data/TwoSim_", typesh, "_rep10.Rda"))
   
   
 }

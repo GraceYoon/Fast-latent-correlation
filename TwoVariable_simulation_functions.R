@@ -69,10 +69,8 @@ fromKtoR_ml_mixed_nocutoff <- function(K12, zratio1 = NULL, zratio2 = NULL, type
 }
 
 
-estimateR_mlonly <- function(X, type = "trunc", method = "mlonly", use.nearPD = TRUE, nu = 0.01, tol = 1e-3, verbose = FALSE){
+estimateR_mlonly <- function(X, type = "trunc", use.nearPD = TRUE, nu = 0.01, tol = 1e-3, verbose = FALSE){
   X <- as.matrix(X)
-  
-  n <- nrow(X)
   p <- ncol(X)
   
   # shrinkage method
@@ -141,17 +139,7 @@ estimateR_mlonly <- function(X, type = "trunc", method = "mlonly", use.nearPD = 
   return(list(type = type, R = R.final))
 }
 
-estimateR_mixed_mlonly <- function(X1, X2, type1 = "trunc", type2 = "continuous", method = "mlonly", use.nearPD = TRUE, nu = 0.01, tol = 1e-3, verbose = FALSE){
-  
-  if (sum(c(type1, type2) %in% c("continuous", "binary", "trunc")) != 2){
-    stop("Unrecognised type of variables. Should be one of continuous, binary or trunc.")
-  }
-  
-  # shrinkage method
-  if(nu < 0 | nu > 1){
-    stop("nu must be be between 0 and 1.")
-  }
-  
+estimateR_mixed_mlonly <- function(X1, X2, type1 = "trunc", type2 = "continuous", use.nearPD = TRUE, nu = 0.01, tol = 1e-3, verbose = FALSE){
   X1 <- as.matrix(X1)
   X2 <- as.matrix(X2)
   
@@ -159,8 +147,16 @@ estimateR_mixed_mlonly <- function(X1, X2, type1 = "trunc", type2 = "continuous"
     stop ("X1 and X2 must have the same sample size.")
   }
   
-  #n <- length(X1)
+  # shrinkage method
+  if(nu < 0 | nu > 1){
+    stop("nu must be be between 0 and 1.")
+  }
+  
   p1 <- ncol(X1); p2 <- ncol(X2)
+  
+  if (sum(c(type1, type2) %in% c("continuous", "binary", "trunc")) != 2){
+    stop("Unrecognised type of variables. Should be one of continuous, binary or trunc.")
+  }
   
   zratio1 <- colMeans(X1 == 0)
   if (type1 == "trunc"){

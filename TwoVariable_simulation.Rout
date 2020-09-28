@@ -1,0 +1,639 @@
+> # Section 4. Comparison on simulated data
+> # This is for two variables.
+> 
+> rm(list=ls())
+> 
+> library(chebpol)
+*** chebpol: FFTW not used.
+*** You should install it from http://fftw.org
+*** or check if your OS-distribution provides it, and recompile.
+> library(microbenchmark)
+> # devtools::install_github("irinagain/mixedCCA", force = TRUE)
+> library(mixedCCA)
+Loading required package: MASS
+> 
+> source("TwoVariable_simulation_functions.R")
+> 
+> 
+> # setup for 100 replication.
+> nrep <- 100
+> 
+> # sample size
+> n <- 100
+> 
+> # will test 9 latent r and 11 zero proportion values.
+> latentRseq <- seq(0.05, 0.91, length.out = 9)
+> zratioseq <- c(0.04, 0.16, 0.28, 0.36, 0.44, 0.5, 0.56, 0.64, 0.72, 0.84, 0.96)
+> 
+> 
+> ##### check five cases of TC, TT, BC, BB, TB
+> for (cases in 1:5){
++   
++   if(cases == 1){
++     type1 <- "trunc"; type2 <- "continuous"
++     typesh <- "TC"
++   } else if(cases == 2){
++     type1 <- "trunc"; type2 <- "trunc"
++     typesh <- "TT"
++   } else if(cases == 3){
++     type1 <- "binary"; type2 <- "continuous"
++     typesh <- "BC"
++   } else if(cases == 4){
++     type1 <- "binary"; type2 <- "binary"
++     typesh <- "BB"
++   } else if(cases == 5){
++     type1 <- "trunc"; type2 <- "binary"
++     typesh <- "TB"
++   }
++   
++   # the computation results will be saved in data.frame format
++   df_comptime <- df_accuracy <- NULL
++   
++   
++   for (trueR in latentRseq){
++     
++     for (zrate in zratioseq){
++       # initialize for every combination
++       Kcor_org <- Kcor_ml <- Kcor_mlbd <- rep(NA, nrep)
++       time_org <- time_ml <- time_mlbd <- rep(NA, nrep)
++       time_all <- matrix(NA, nrow = nrep, ncol = 3)
++       
++       ptm <- proc.time()
++       set.seed(123)
++       
++       for(i in 1:nrep){
++         # generate bivariate normal
++         z <- MASS::mvrnorm(n, mu = c(0, 0), Sigma = matrix(c(1, trueR, trueR, 1), nrow=2))
++         if(cases == 1){ ## TC case
++           # shifting to control the truncation levels
++           z1shift <- quantile(z[, 1], zrate)
++           z1 <- z[, 1] - z1shift
++           z2 <- z[, 2] - z1shift # shift the same amount of z1.
++           # truncate the first variable.
++           u1 <- ifelse(z1 > 0, z1, 0)
++           u2 <- z2 # since this is continuous variable
++         } else if (cases == 2){ ## TT case
++           z1shift <- quantile(z[, 1], zrate) # shifting to control the truncation levels
++           z2shift <- quantile(z[, 2], zrate/2) # shifting half of zrate to control the truncation rate of 2nd variable as half trucation level of the first variable.
++           z1 <- z[, 1] - z1shift
++           z2 <- z[, 2] - z2shift
++           # truncation first and second variables.
++           u1 <- ifelse(z1 > 0, z1, 0)
++           u2 <- ifelse(z2 > 0, z2, 0)
++         } else if (cases == 3){ ## BC case
++           z1shift <- quantile(z[, 1], zrate) # shifting to control the truncation levels
++           z1 <- z[, 1] - z1shift
++           z2 <- z[, 2] - z1shift # shift the same amount of z1.
++           # truncation first
++           u1 <- ifelse(z1 > 0, 1, 0)
++           u2 <- z2 # since this is continuous variable
++         } else if (cases == 4){ ## BB case
++           z1shift <- quantile(z[, 1], zrate) # shifting to control the truncation levels
++           z2shift <- quantile(z[, 2], 0.5) # fixed the zero ratio of the second variable 
++           z1 <- z[, 1] - z1shift
++           z2 <- z[, 2] - z2shift 
++           # truncation first
++           u1 <- ifelse(z1 > 0, 1, 0)
++           u2 <- ifelse(z2 > 0, 1, 0)
++         } else if (cases == 5){ ## TB case
++           z1shift <- quantile(z[, 1], zrate) # shifting to control the truncation levels
++           z2shift <- quantile(z[, 2], 0.5) # fixed the zero ratio of the second variable 
++           z1 <- z[, 1] - z1shift
++           z2 <- z[, 2] - z2shift 
++           # truncation first
++           u1 <- ifelse(z1 > 0, z1, 0)
++           u2 <- ifelse(z2 > 0, 1, 0)
++         }
++         
++         # didn't apply any transformation.
++         x1 <- u1
++         x2 <- u2
++         
++         
++         capture.output( # suppress the microbenchmark result.
++           time_all[i, ] <- print(microbenchmark(
++             Kcor_org[i] <- estimateR_mixed(X1 = x1, X2 = x2, type1 = type1, type2 = type2, method = "original", nu = 0, tol = 1e-6)$R12,
++             Kcor_ml[i] <- estimateR_mixed_mlonly(X1 = x1, X2 = x2, type1 = type1, type2 = type2, nu = 0)$R12,
++             Kcor_mlbd[i] <- estimateR_mixed(X1 = x1, X2 = x2, type1 = type1, type2 = type2, method = "approx", nu = 0, tol = 1e-6)$R12,
++             times = 10 # tried ten times
++           ), unit = "us")[, 5] # to use fixed unit: "microseconds"
++           # 5th column has median value
++         )
++       }
++       
++       # apply(time_all, 2, summary) # 3rd row gives median value.
++       df_comptime <- rbind.data.frame(df_comptime, data.frame(LatentR = trueR, TruncRate = zrate, medianTime = apply(time_all, 2, summary)[3, ], method = c("org", "ipol", "ipol_UB")))
++       
++       # save two kinds of errors: maximum absolute error and mean absolute error.
++       df_accuracy <- rbind.data.frame(df_accuracy, data.frame(LatentR = trueR, TruncRate = zrate, MeanAD = c(mean(abs(Kcor_org - Kcor_ml)), mean(abs(Kcor_org - Kcor_mlbd))), MaxAD = c(max(abs(Kcor_org - Kcor_ml)), max(abs(Kcor_org - Kcor_mlbd))), method = c("ipol", "ipol_UB")))
++       
++       cat(typesh, "case: trueR = ", trueR, "\t zrate =", zrate, "\t took ", (proc.time() - ptm)[3], " seconds.\n")
++     }
++   }
++   
++   
++   save(df_comptime, df_accuracy, file = paste0("Data/TwoSim_", typesh, "_rep10.Rda"))
++   
++   
++ }
+TC case: trueR =  0.05 	 zrate = 0.04 	 took  34.921  seconds.
+TC case: trueR =  0.05 	 zrate = 0.16 	 took  33.839  seconds.
+TC case: trueR =  0.05 	 zrate = 0.28 	 took  33.708  seconds.
+TC case: trueR =  0.05 	 zrate = 0.36 	 took  33.412  seconds.
+TC case: trueR =  0.05 	 zrate = 0.44 	 took  33.499  seconds.
+TC case: trueR =  0.05 	 zrate = 0.5 	 took  31.083  seconds.
+TC case: trueR =  0.05 	 zrate = 0.56 	 took  33.611  seconds.
+TC case: trueR =  0.05 	 zrate = 0.64 	 took  33.257  seconds.
+TC case: trueR =  0.05 	 zrate = 0.72 	 took  32.649  seconds.
+TC case: trueR =  0.05 	 zrate = 0.84 	 took  32.148  seconds.
+TC case: trueR =  0.05 	 zrate = 0.96 	 took  33.231  seconds.
+TC case: trueR =  0.1575 	 zrate = 0.04 	 took  32.873  seconds.
+TC case: trueR =  0.1575 	 zrate = 0.16 	 took  33.17  seconds.
+TC case: trueR =  0.1575 	 zrate = 0.28 	 took  33.036  seconds.
+TC case: trueR =  0.1575 	 zrate = 0.36 	 took  33.317  seconds.
+TC case: trueR =  0.1575 	 zrate = 0.44 	 took  33.285  seconds.
+TC case: trueR =  0.1575 	 zrate = 0.5 	 took  30.895  seconds.
+TC case: trueR =  0.1575 	 zrate = 0.56 	 took  32.976  seconds.
+TC case: trueR =  0.1575 	 zrate = 0.64 	 took  33.263  seconds.
+TC case: trueR =  0.1575 	 zrate = 0.72 	 took  32.685  seconds.
+TC case: trueR =  0.1575 	 zrate = 0.84 	 took  32.767  seconds.
+TC case: trueR =  0.1575 	 zrate = 0.96 	 took  32.928  seconds.
+TC case: trueR =  0.265 	 zrate = 0.04 	 took  33.666  seconds.
+TC case: trueR =  0.265 	 zrate = 0.16 	 took  33.575  seconds.
+TC case: trueR =  0.265 	 zrate = 0.28 	 took  32.947  seconds.
+TC case: trueR =  0.265 	 zrate = 0.36 	 took  32.817  seconds.
+TC case: trueR =  0.265 	 zrate = 0.44 	 took  33.479  seconds.
+TC case: trueR =  0.265 	 zrate = 0.5 	 took  31.142  seconds.
+TC case: trueR =  0.265 	 zrate = 0.56 	 took  33.062  seconds.
+TC case: trueR =  0.265 	 zrate = 0.64 	 took  33.258  seconds.
+TC case: trueR =  0.265 	 zrate = 0.72 	 took  32.983  seconds.
+TC case: trueR =  0.265 	 zrate = 0.84 	 took  33.03  seconds.
+TC case: trueR =  0.265 	 zrate = 0.96 	 took  33.072  seconds.
+TC case: trueR =  0.3725 	 zrate = 0.04 	 took  33.406  seconds.
+TC case: trueR =  0.3725 	 zrate = 0.16 	 took  33.377  seconds.
+TC case: trueR =  0.3725 	 zrate = 0.28 	 took  33.665  seconds.
+TC case: trueR =  0.3725 	 zrate = 0.36 	 took  33.636  seconds.
+TC case: trueR =  0.3725 	 zrate = 0.44 	 took  33.113  seconds.
+TC case: trueR =  0.3725 	 zrate = 0.5 	 took  31.131  seconds.
+TC case: trueR =  0.3725 	 zrate = 0.56 	 took  33.049  seconds.
+TC case: trueR =  0.3725 	 zrate = 0.64 	 took  32.891  seconds.
+TC case: trueR =  0.3725 	 zrate = 0.72 	 took  33.26  seconds.
+TC case: trueR =  0.3725 	 zrate = 0.84 	 took  32.642  seconds.
+TC case: trueR =  0.3725 	 zrate = 0.96 	 took  33.959  seconds.
+TC case: trueR =  0.48 	 zrate = 0.04 	 took  32.846  seconds.
+TC case: trueR =  0.48 	 zrate = 0.16 	 took  33.091  seconds.
+TC case: trueR =  0.48 	 zrate = 0.28 	 took  33.311  seconds.
+TC case: trueR =  0.48 	 zrate = 0.36 	 took  33.052  seconds.
+TC case: trueR =  0.48 	 zrate = 0.44 	 took  33.201  seconds.
+TC case: trueR =  0.48 	 zrate = 0.5 	 took  31.355  seconds.
+TC case: trueR =  0.48 	 zrate = 0.56 	 took  33.048  seconds.
+TC case: trueR =  0.48 	 zrate = 0.64 	 took  33.253  seconds.
+TC case: trueR =  0.48 	 zrate = 0.72 	 took  33.43  seconds.
+TC case: trueR =  0.48 	 zrate = 0.84 	 took  32.794  seconds.
+TC case: trueR =  0.48 	 zrate = 0.96 	 took  33.606  seconds.
+TC case: trueR =  0.5875 	 zrate = 0.04 	 took  33.177  seconds.
+TC case: trueR =  0.5875 	 zrate = 0.16 	 took  32.952  seconds.
+TC case: trueR =  0.5875 	 zrate = 0.28 	 took  33.063  seconds.
+TC case: trueR =  0.5875 	 zrate = 0.36 	 took  34.644  seconds.
+TC case: trueR =  0.5875 	 zrate = 0.44 	 took  33.546  seconds.
+TC case: trueR =  0.5875 	 zrate = 0.5 	 took  31.111  seconds.
+TC case: trueR =  0.5875 	 zrate = 0.56 	 took  33.474  seconds.
+TC case: trueR =  0.5875 	 zrate = 0.64 	 took  33.469  seconds.
+TC case: trueR =  0.5875 	 zrate = 0.72 	 took  33.015  seconds.
+TC case: trueR =  0.5875 	 zrate = 0.84 	 took  32.887  seconds.
+TC case: trueR =  0.5875 	 zrate = 0.96 	 took  34.605  seconds.
+TC case: trueR =  0.695 	 zrate = 0.04 	 took  33.832  seconds.
+TC case: trueR =  0.695 	 zrate = 0.16 	 took  33.424  seconds.
+TC case: trueR =  0.695 	 zrate = 0.28 	 took  33.541  seconds.
+TC case: trueR =  0.695 	 zrate = 0.36 	 took  33.901  seconds.
+TC case: trueR =  0.695 	 zrate = 0.44 	 took  33.325  seconds.
+TC case: trueR =  0.695 	 zrate = 0.5 	 took  31.048  seconds.
+TC case: trueR =  0.695 	 zrate = 0.56 	 took  33.495  seconds.
+TC case: trueR =  0.695 	 zrate = 0.64 	 took  34.318  seconds.
+TC case: trueR =  0.695 	 zrate = 0.72 	 took  33.604  seconds.
+TC case: trueR =  0.695 	 zrate = 0.84 	 took  33.551  seconds.
+TC case: trueR =  0.695 	 zrate = 0.96 	 took  34.922  seconds.
+TC case: trueR =  0.8025 	 zrate = 0.04 	 took  34.182  seconds.
+TC case: trueR =  0.8025 	 zrate = 0.16 	 took  34.545  seconds.
+TC case: trueR =  0.8025 	 zrate = 0.28 	 took  34.197  seconds.
+TC case: trueR =  0.8025 	 zrate = 0.36 	 took  33.763  seconds.
+TC case: trueR =  0.8025 	 zrate = 0.44 	 took  34.407  seconds.
+TC case: trueR =  0.8025 	 zrate = 0.5 	 took  31.617  seconds.
+TC case: trueR =  0.8025 	 zrate = 0.56 	 took  34.105  seconds.
+TC case: trueR =  0.8025 	 zrate = 0.64 	 took  34.125  seconds.
+TC case: trueR =  0.8025 	 zrate = 0.72 	 took  33.847  seconds.
+TC case: trueR =  0.8025 	 zrate = 0.84 	 took  33.684  seconds.
+TC case: trueR =  0.8025 	 zrate = 0.96 	 took  35.573  seconds.
+TC case: trueR =  0.91 	 zrate = 0.04 	 took  34.967  seconds.
+TC case: trueR =  0.91 	 zrate = 0.16 	 took  34.561  seconds.
+TC case: trueR =  0.91 	 zrate = 0.28 	 took  35.173  seconds.
+TC case: trueR =  0.91 	 zrate = 0.36 	 took  34.63  seconds.
+TC case: trueR =  0.91 	 zrate = 0.44 	 took  34.749  seconds.
+TC case: trueR =  0.91 	 zrate = 0.5 	 took  31.969  seconds.
+TC case: trueR =  0.91 	 zrate = 0.56 	 took  34.334  seconds.
+TC case: trueR =  0.91 	 zrate = 0.64 	 took  34.273  seconds.
+TC case: trueR =  0.91 	 zrate = 0.72 	 took  33.974  seconds.
+TC case: trueR =  0.91 	 zrate = 0.84 	 took  35.491  seconds.
+TC case: trueR =  0.91 	 zrate = 0.96 	 took  39.664  seconds.
+TT case: trueR =  0.05 	 zrate = 0.04 	 took  37.033  seconds.
+TT case: trueR =  0.05 	 zrate = 0.16 	 took  40.395  seconds.
+TT case: trueR =  0.05 	 zrate = 0.28 	 took  43.165  seconds.
+TT case: trueR =  0.05 	 zrate = 0.36 	 took  44.57  seconds.
+TT case: trueR =  0.05 	 zrate = 0.44 	 took  48.383  seconds.
+TT case: trueR =  0.05 	 zrate = 0.5 	 took  48.127  seconds.
+TT case: trueR =  0.05 	 zrate = 0.56 	 took  53.333  seconds.
+TT case: trueR =  0.05 	 zrate = 0.64 	 took  52.852  seconds.
+TT case: trueR =  0.05 	 zrate = 0.72 	 took  49.933  seconds.
+TT case: trueR =  0.05 	 zrate = 0.84 	 took  44.154  seconds.
+TT case: trueR =  0.05 	 zrate = 0.96 	 took  36.425  seconds.
+TT case: trueR =  0.1575 	 zrate = 0.04 	 took  37.801  seconds.
+TT case: trueR =  0.1575 	 zrate = 0.16 	 took  41.519  seconds.
+TT case: trueR =  0.1575 	 zrate = 0.28 	 took  43.12  seconds.
+TT case: trueR =  0.1575 	 zrate = 0.36 	 took  44.927  seconds.
+TT case: trueR =  0.1575 	 zrate = 0.44 	 took  50.335  seconds.
+TT case: trueR =  0.1575 	 zrate = 0.5 	 took  49.55  seconds.
+TT case: trueR =  0.1575 	 zrate = 0.56 	 took  58.836  seconds.
+TT case: trueR =  0.1575 	 zrate = 0.64 	 took  58.027  seconds.
+TT case: trueR =  0.1575 	 zrate = 0.72 	 took  55.345  seconds.
+TT case: trueR =  0.1575 	 zrate = 0.84 	 took  47.318  seconds.
+TT case: trueR =  0.1575 	 zrate = 0.96 	 took  36.246  seconds.
+TT case: trueR =  0.265 	 zrate = 0.04 	 took  38.866  seconds.
+TT case: trueR =  0.265 	 zrate = 0.16 	 took  42.338  seconds.
+TT case: trueR =  0.265 	 zrate = 0.28 	 took  44.332  seconds.
+TT case: trueR =  0.265 	 zrate = 0.36 	 took  46.402  seconds.
+TT case: trueR =  0.265 	 zrate = 0.44 	 took  53.704  seconds.
+TT case: trueR =  0.265 	 zrate = 0.5 	 took  52.823  seconds.
+TT case: trueR =  0.265 	 zrate = 0.56 	 took  65.802  seconds.
+TT case: trueR =  0.265 	 zrate = 0.64 	 took  65.171  seconds.
+TT case: trueR =  0.265 	 zrate = 0.72 	 took  62.043  seconds.
+TT case: trueR =  0.265 	 zrate = 0.84 	 took  52.761  seconds.
+TT case: trueR =  0.265 	 zrate = 0.96 	 took  37.27  seconds.
+TT case: trueR =  0.3725 	 zrate = 0.04 	 took  40.047  seconds.
+TT case: trueR =  0.3725 	 zrate = 0.16 	 took  43.627  seconds.
+TT case: trueR =  0.3725 	 zrate = 0.28 	 took  46.478  seconds.
+TT case: trueR =  0.3725 	 zrate = 0.36 	 took  49.889  seconds.
+TT case: trueR =  0.3725 	 zrate = 0.44 	 took  57.332  seconds.
+TT case: trueR =  0.3725 	 zrate = 0.5 	 took  58.346  seconds.
+TT case: trueR =  0.3725 	 zrate = 0.56 	 took  71.437  seconds.
+TT case: trueR =  0.3725 	 zrate = 0.64 	 took  70.433  seconds.
+TT case: trueR =  0.3725 	 zrate = 0.72 	 took  65.85  seconds.
+TT case: trueR =  0.3725 	 zrate = 0.84 	 took  58.181  seconds.
+TT case: trueR =  0.3725 	 zrate = 0.96 	 took  38.939  seconds.
+TT case: trueR =  0.48 	 zrate = 0.04 	 took  39.783  seconds.
+TT case: trueR =  0.48 	 zrate = 0.16 	 took  44.302  seconds.
+TT case: trueR =  0.48 	 zrate = 0.28 	 took  48.025  seconds.
+TT case: trueR =  0.48 	 zrate = 0.36 	 took  51.991  seconds.
+TT case: trueR =  0.48 	 zrate = 0.44 	 took  59.384  seconds.
+TT case: trueR =  0.48 	 zrate = 0.5 	 took  62.059  seconds.
+TT case: trueR =  0.48 	 zrate = 0.56 	 took  73.358  seconds.
+TT case: trueR =  0.48 	 zrate = 0.64 	 took  73.262  seconds.
+TT case: trueR =  0.48 	 zrate = 0.72 	 took  70.75  seconds.
+TT case: trueR =  0.48 	 zrate = 0.84 	 took  62.088  seconds.
+TT case: trueR =  0.48 	 zrate = 0.96 	 took  38.639  seconds.
+TT case: trueR =  0.5875 	 zrate = 0.04 	 took  40.915  seconds.
+TT case: trueR =  0.5875 	 zrate = 0.16 	 took  47.628  seconds.
+TT case: trueR =  0.5875 	 zrate = 0.28 	 took  48.908  seconds.
+TT case: trueR =  0.5875 	 zrate = 0.36 	 took  54.796  seconds.
+TT case: trueR =  0.5875 	 zrate = 0.44 	 took  61.493  seconds.
+TT case: trueR =  0.5875 	 zrate = 0.5 	 took  62.211  seconds.
+TT case: trueR =  0.5875 	 zrate = 0.56 	 took  76.434  seconds.
+TT case: trueR =  0.5875 	 zrate = 0.64 	 took  76.217  seconds.
+TT case: trueR =  0.5875 	 zrate = 0.72 	 took  73.964  seconds.
+TT case: trueR =  0.5875 	 zrate = 0.84 	 took  63.014  seconds.
+TT case: trueR =  0.5875 	 zrate = 0.96 	 took  40.47  seconds.
+TT case: trueR =  0.695 	 zrate = 0.04 	 took  42.049  seconds.
+TT case: trueR =  0.695 	 zrate = 0.16 	 took  48.521  seconds.
+TT case: trueR =  0.695 	 zrate = 0.28 	 took  53.169  seconds.
+TT case: trueR =  0.695 	 zrate = 0.36 	 took  57.24  seconds.
+TT case: trueR =  0.695 	 zrate = 0.44 	 took  63.627  seconds.
+TT case: trueR =  0.695 	 zrate = 0.5 	 took  64.047  seconds.
+TT case: trueR =  0.695 	 zrate = 0.56 	 took  78.948  seconds.
+TT case: trueR =  0.695 	 zrate = 0.64 	 took  79.208  seconds.
+TT case: trueR =  0.695 	 zrate = 0.72 	 took  75.105  seconds.
+TT case: trueR =  0.695 	 zrate = 0.84 	 took  61.303  seconds.
+TT case: trueR =  0.695 	 zrate = 0.96 	 took  41.444  seconds.
+TT case: trueR =  0.8025 	 zrate = 0.04 	 took  42.752  seconds.
+TT case: trueR =  0.8025 	 zrate = 0.16 	 took  52.573  seconds.
+TT case: trueR =  0.8025 	 zrate = 0.28 	 took  58.18  seconds.
+TT case: trueR =  0.8025 	 zrate = 0.36 	 took  63.667  seconds.
+TT case: trueR =  0.8025 	 zrate = 0.44 	 took  67.712  seconds.
+TT case: trueR =  0.8025 	 zrate = 0.5 	 took  67.528  seconds.
+TT case: trueR =  0.8025 	 zrate = 0.56 	 took  80.036  seconds.
+TT case: trueR =  0.8025 	 zrate = 0.64 	 took  77.534  seconds.
+TT case: trueR =  0.8025 	 zrate = 0.72 	 took  70.646  seconds.
+TT case: trueR =  0.8025 	 zrate = 0.84 	 took  57.14  seconds.
+TT case: trueR =  0.8025 	 zrate = 0.96 	 took  43.021  seconds.
+TT case: trueR =  0.91 	 zrate = 0.04 	 took  54.143  seconds.
+TT case: trueR =  0.91 	 zrate = 0.16 	 took  61.913  seconds.
+TT case: trueR =  0.91 	 zrate = 0.28 	 took  65.553  seconds.
+TT case: trueR =  0.91 	 zrate = 0.36 	 took  68.005  seconds.
+TT case: trueR =  0.91 	 zrate = 0.44 	 took  71.084  seconds.
+TT case: trueR =  0.91 	 zrate = 0.5 	 took  69.014  seconds.
+TT case: trueR =  0.91 	 zrate = 0.56 	 took  71.925  seconds.
+TT case: trueR =  0.91 	 zrate = 0.64 	 took  70.898  seconds.
+TT case: trueR =  0.91 	 zrate = 0.72 	 took  64.736  seconds.
+TT case: trueR =  0.91 	 zrate = 0.84 	 took  56.041  seconds.
+TT case: trueR =  0.91 	 zrate = 0.96 	 took  49.835  seconds.
+BC case: trueR =  0.05 	 zrate = 0.04 	 took  32.754  seconds.
+BC case: trueR =  0.05 	 zrate = 0.16 	 took  31.909  seconds.
+BC case: trueR =  0.05 	 zrate = 0.28 	 took  32.507  seconds.
+BC case: trueR =  0.05 	 zrate = 0.36 	 took  31.713  seconds.
+BC case: trueR =  0.05 	 zrate = 0.44 	 took  32.883  seconds.
+BC case: trueR =  0.05 	 zrate = 0.5 	 took  30.645  seconds.
+BC case: trueR =  0.05 	 zrate = 0.56 	 took  31.865  seconds.
+BC case: trueR =  0.05 	 zrate = 0.64 	 took  32.314  seconds.
+BC case: trueR =  0.05 	 zrate = 0.72 	 took  32.098  seconds.
+BC case: trueR =  0.05 	 zrate = 0.84 	 took  31.578  seconds.
+BC case: trueR =  0.05 	 zrate = 0.96 	 took  32.467  seconds.
+BC case: trueR =  0.1575 	 zrate = 0.04 	 took  32.063  seconds.
+BC case: trueR =  0.1575 	 zrate = 0.16 	 took  32.244  seconds.
+BC case: trueR =  0.1575 	 zrate = 0.28 	 took  31.911  seconds.
+BC case: trueR =  0.1575 	 zrate = 0.36 	 took  32.217  seconds.
+BC case: trueR =  0.1575 	 zrate = 0.44 	 took  32.066  seconds.
+BC case: trueR =  0.1575 	 zrate = 0.5 	 took  30.271  seconds.
+BC case: trueR =  0.1575 	 zrate = 0.56 	 took  32.098  seconds.
+BC case: trueR =  0.1575 	 zrate = 0.64 	 took  31.717  seconds.
+BC case: trueR =  0.1575 	 zrate = 0.72 	 took  32.007  seconds.
+BC case: trueR =  0.1575 	 zrate = 0.84 	 took  31.655  seconds.
+BC case: trueR =  0.1575 	 zrate = 0.96 	 took  31.796  seconds.
+BC case: trueR =  0.265 	 zrate = 0.04 	 took  32.061  seconds.
+BC case: trueR =  0.265 	 zrate = 0.16 	 took  31.721  seconds.
+BC case: trueR =  0.265 	 zrate = 0.28 	 took  32.739  seconds.
+BC case: trueR =  0.265 	 zrate = 0.36 	 took  32.09  seconds.
+BC case: trueR =  0.265 	 zrate = 0.44 	 took  31.707  seconds.
+BC case: trueR =  0.265 	 zrate = 0.5 	 took  30.618  seconds.
+BC case: trueR =  0.265 	 zrate = 0.56 	 took  33.165  seconds.
+BC case: trueR =  0.265 	 zrate = 0.64 	 took  32.426  seconds.
+BC case: trueR =  0.265 	 zrate = 0.72 	 took  32.562  seconds.
+BC case: trueR =  0.265 	 zrate = 0.84 	 took  32.106  seconds.
+BC case: trueR =  0.265 	 zrate = 0.96 	 took  32.877  seconds.
+BC case: trueR =  0.3725 	 zrate = 0.04 	 took  32.82  seconds.
+BC case: trueR =  0.3725 	 zrate = 0.16 	 took  32.059  seconds.
+BC case: trueR =  0.3725 	 zrate = 0.28 	 took  32.342  seconds.
+BC case: trueR =  0.3725 	 zrate = 0.36 	 took  31.674  seconds.
+BC case: trueR =  0.3725 	 zrate = 0.44 	 took  31.717  seconds.
+BC case: trueR =  0.3725 	 zrate = 0.5 	 took  30.375  seconds.
+BC case: trueR =  0.3725 	 zrate = 0.56 	 took  31.799  seconds.
+BC case: trueR =  0.3725 	 zrate = 0.64 	 took  32.235  seconds.
+BC case: trueR =  0.3725 	 zrate = 0.72 	 took  32.407  seconds.
+BC case: trueR =  0.3725 	 zrate = 0.84 	 took  31.651  seconds.
+BC case: trueR =  0.3725 	 zrate = 0.96 	 took  32.253  seconds.
+BC case: trueR =  0.48 	 zrate = 0.04 	 took  33.345  seconds.
+BC case: trueR =  0.48 	 zrate = 0.16 	 took  31.978  seconds.
+BC case: trueR =  0.48 	 zrate = 0.28 	 took  32.452  seconds.
+BC case: trueR =  0.48 	 zrate = 0.36 	 took  32.57  seconds.
+BC case: trueR =  0.48 	 zrate = 0.44 	 took  32.021  seconds.
+BC case: trueR =  0.48 	 zrate = 0.5 	 took  30.775  seconds.
+BC case: trueR =  0.48 	 zrate = 0.56 	 took  32.042  seconds.
+BC case: trueR =  0.48 	 zrate = 0.64 	 took  31.994  seconds.
+BC case: trueR =  0.48 	 zrate = 0.72 	 took  32.003  seconds.
+BC case: trueR =  0.48 	 zrate = 0.84 	 took  31.434  seconds.
+BC case: trueR =  0.48 	 zrate = 0.96 	 took  32.785  seconds.
+BC case: trueR =  0.5875 	 zrate = 0.04 	 took  33.188  seconds.
+BC case: trueR =  0.5875 	 zrate = 0.16 	 took  33.011  seconds.
+BC case: trueR =  0.5875 	 zrate = 0.28 	 took  32.416  seconds.
+BC case: trueR =  0.5875 	 zrate = 0.36 	 took  31.873  seconds.
+BC case: trueR =  0.5875 	 zrate = 0.44 	 took  32.241  seconds.
+BC case: trueR =  0.5875 	 zrate = 0.5 	 took  30.376  seconds.
+BC case: trueR =  0.5875 	 zrate = 0.56 	 took  32.117  seconds.
+BC case: trueR =  0.5875 	 zrate = 0.64 	 took  32.383  seconds.
+BC case: trueR =  0.5875 	 zrate = 0.72 	 took  31.893  seconds.
+BC case: trueR =  0.5875 	 zrate = 0.84 	 took  31.892  seconds.
+BC case: trueR =  0.5875 	 zrate = 0.96 	 took  33.15  seconds.
+BC case: trueR =  0.695 	 zrate = 0.04 	 took  34.401  seconds.
+BC case: trueR =  0.695 	 zrate = 0.16 	 took  32.108  seconds.
+BC case: trueR =  0.695 	 zrate = 0.28 	 took  32.425  seconds.
+BC case: trueR =  0.695 	 zrate = 0.36 	 took  32.31  seconds.
+BC case: trueR =  0.695 	 zrate = 0.44 	 took  32.708  seconds.
+BC case: trueR =  0.695 	 zrate = 0.5 	 took  30.653  seconds.
+BC case: trueR =  0.695 	 zrate = 0.56 	 took  32.486  seconds.
+BC case: trueR =  0.695 	 zrate = 0.64 	 took  32.328  seconds.
+BC case: trueR =  0.695 	 zrate = 0.72 	 took  32.482  seconds.
+BC case: trueR =  0.695 	 zrate = 0.84 	 took  31.961  seconds.
+BC case: trueR =  0.695 	 zrate = 0.96 	 took  33.061  seconds.
+BC case: trueR =  0.8025 	 zrate = 0.04 	 took  35.332  seconds.
+BC case: trueR =  0.8025 	 zrate = 0.16 	 took  33.333  seconds.
+BC case: trueR =  0.8025 	 zrate = 0.28 	 took  33.651  seconds.
+BC case: trueR =  0.8025 	 zrate = 0.36 	 took  32.559  seconds.
+BC case: trueR =  0.8025 	 zrate = 0.44 	 took  33.096  seconds.
+BC case: trueR =  0.8025 	 zrate = 0.5 	 took  30.539  seconds.
+BC case: trueR =  0.8025 	 zrate = 0.56 	 took  33.066  seconds.
+BC case: trueR =  0.8025 	 zrate = 0.64 	 took  32.755  seconds.
+BC case: trueR =  0.8025 	 zrate = 0.72 	 took  32.193  seconds.
+BC case: trueR =  0.8025 	 zrate = 0.84 	 took  32.19  seconds.
+BC case: trueR =  0.8025 	 zrate = 0.96 	 took  35.047  seconds.
+BC case: trueR =  0.91 	 zrate = 0.04 	 took  37.759  seconds.
+BC case: trueR =  0.91 	 zrate = 0.16 	 took  36.174  seconds.
+BC case: trueR =  0.91 	 zrate = 0.28 	 took  35.096  seconds.
+BC case: trueR =  0.91 	 zrate = 0.36 	 took  34.906  seconds.
+BC case: trueR =  0.91 	 zrate = 0.44 	 took  34.186  seconds.
+BC case: trueR =  0.91 	 zrate = 0.5 	 took  31.075  seconds.
+BC case: trueR =  0.91 	 zrate = 0.56 	 took  34.289  seconds.
+BC case: trueR =  0.91 	 zrate = 0.64 	 took  35.236  seconds.
+BC case: trueR =  0.91 	 zrate = 0.72 	 took  34.235  seconds.
+BC case: trueR =  0.91 	 zrate = 0.84 	 took  34.648  seconds.
+BC case: trueR =  0.91 	 zrate = 0.96 	 took  38.468  seconds.
+BB case: trueR =  0.05 	 zrate = 0.04 	 took  35.144  seconds.
+BB case: trueR =  0.05 	 zrate = 0.16 	 took  32.719  seconds.
+BB case: trueR =  0.05 	 zrate = 0.28 	 took  32.36  seconds.
+BB case: trueR =  0.05 	 zrate = 0.36 	 took  32.234  seconds.
+BB case: trueR =  0.05 	 zrate = 0.44 	 took  32.55  seconds.
+BB case: trueR =  0.05 	 zrate = 0.5 	 took  30.882  seconds.
+BB case: trueR =  0.05 	 zrate = 0.56 	 took  32.566  seconds.
+BB case: trueR =  0.05 	 zrate = 0.64 	 took  32.444  seconds.
+BB case: trueR =  0.05 	 zrate = 0.72 	 took  32.273  seconds.
+BB case: trueR =  0.05 	 zrate = 0.84 	 took  32.238  seconds.
+BB case: trueR =  0.05 	 zrate = 0.96 	 took  34.404  seconds.
+BB case: trueR =  0.1575 	 zrate = 0.04 	 took  35.406  seconds.
+BB case: trueR =  0.1575 	 zrate = 0.16 	 took  32.792  seconds.
+BB case: trueR =  0.1575 	 zrate = 0.28 	 took  32.295  seconds.
+BB case: trueR =  0.1575 	 zrate = 0.36 	 took  32.299  seconds.
+BB case: trueR =  0.1575 	 zrate = 0.44 	 took  32.946  seconds.
+BB case: trueR =  0.1575 	 zrate = 0.5 	 took  30.822  seconds.
+BB case: trueR =  0.1575 	 zrate = 0.56 	 took  32.377  seconds.
+BB case: trueR =  0.1575 	 zrate = 0.64 	 took  32.645  seconds.
+BB case: trueR =  0.1575 	 zrate = 0.72 	 took  32.616  seconds.
+BB case: trueR =  0.1575 	 zrate = 0.84 	 took  32.098  seconds.
+BB case: trueR =  0.1575 	 zrate = 0.96 	 took  35.846  seconds.
+BB case: trueR =  0.265 	 zrate = 0.04 	 took  36.028  seconds.
+BB case: trueR =  0.265 	 zrate = 0.16 	 took  32.168  seconds.
+BB case: trueR =  0.265 	 zrate = 0.28 	 took  32.284  seconds.
+BB case: trueR =  0.265 	 zrate = 0.36 	 took  32.797  seconds.
+BB case: trueR =  0.265 	 zrate = 0.44 	 took  32.604  seconds.
+BB case: trueR =  0.265 	 zrate = 0.5 	 took  30.765  seconds.
+BB case: trueR =  0.265 	 zrate = 0.56 	 took  32.82  seconds.
+BB case: trueR =  0.265 	 zrate = 0.64 	 took  33.258  seconds.
+BB case: trueR =  0.265 	 zrate = 0.72 	 took  32.707  seconds.
+BB case: trueR =  0.265 	 zrate = 0.84 	 took  32.705  seconds.
+BB case: trueR =  0.265 	 zrate = 0.96 	 took  37.247  seconds.
+BB case: trueR =  0.3725 	 zrate = 0.04 	 took  38.356  seconds.
+BB case: trueR =  0.3725 	 zrate = 0.16 	 took  32.388  seconds.
+BB case: trueR =  0.3725 	 zrate = 0.28 	 took  32.41  seconds.
+BB case: trueR =  0.3725 	 zrate = 0.36 	 took  32.448  seconds.
+BB case: trueR =  0.3725 	 zrate = 0.44 	 took  32.402  seconds.
+BB case: trueR =  0.3725 	 zrate = 0.5 	 took  30.974  seconds.
+BB case: trueR =  0.3725 	 zrate = 0.56 	 took  32.993  seconds.
+BB case: trueR =  0.3725 	 zrate = 0.64 	 took  33.401  seconds.
+BB case: trueR =  0.3725 	 zrate = 0.72 	 took  33.228  seconds.
+BB case: trueR =  0.3725 	 zrate = 0.84 	 took  32.309  seconds.
+BB case: trueR =  0.3725 	 zrate = 0.96 	 took  38.267  seconds.
+BB case: trueR =  0.48 	 zrate = 0.04 	 took  41.552  seconds.
+BB case: trueR =  0.48 	 zrate = 0.16 	 took  33.013  seconds.
+BB case: trueR =  0.48 	 zrate = 0.28 	 took  32.552  seconds.
+BB case: trueR =  0.48 	 zrate = 0.36 	 took  33.083  seconds.
+BB case: trueR =  0.48 	 zrate = 0.44 	 took  33.331  seconds.
+BB case: trueR =  0.48 	 zrate = 0.5 	 took  31.431  seconds.
+BB case: trueR =  0.48 	 zrate = 0.56 	 took  32.72  seconds.
+BB case: trueR =  0.48 	 zrate = 0.64 	 took  32.72  seconds.
+BB case: trueR =  0.48 	 zrate = 0.72 	 took  32.567  seconds.
+BB case: trueR =  0.48 	 zrate = 0.84 	 took  32.442  seconds.
+BB case: trueR =  0.48 	 zrate = 0.96 	 took  40.157  seconds.
+BB case: trueR =  0.5875 	 zrate = 0.04 	 took  43.092  seconds.
+BB case: trueR =  0.5875 	 zrate = 0.16 	 took  34.555  seconds.
+BB case: trueR =  0.5875 	 zrate = 0.28 	 took  33.483  seconds.
+BB case: trueR =  0.5875 	 zrate = 0.36 	 took  32.992  seconds.
+BB case: trueR =  0.5875 	 zrate = 0.44 	 took  33.345  seconds.
+BB case: trueR =  0.5875 	 zrate = 0.5 	 took  30.706  seconds.
+BB case: trueR =  0.5875 	 zrate = 0.56 	 took  32.553  seconds.
+BB case: trueR =  0.5875 	 zrate = 0.64 	 took  33.001  seconds.
+BB case: trueR =  0.5875 	 zrate = 0.72 	 took  33.674  seconds.
+BB case: trueR =  0.5875 	 zrate = 0.84 	 took  33.904  seconds.
+BB case: trueR =  0.5875 	 zrate = 0.96 	 took  42.579  seconds.
+BB case: trueR =  0.695 	 zrate = 0.04 	 took  44.806  seconds.
+BB case: trueR =  0.695 	 zrate = 0.16 	 took  36.359  seconds.
+BB case: trueR =  0.695 	 zrate = 0.28 	 took  33.106  seconds.
+BB case: trueR =  0.695 	 zrate = 0.36 	 took  33.46  seconds.
+BB case: trueR =  0.695 	 zrate = 0.44 	 took  33.29  seconds.
+BB case: trueR =  0.695 	 zrate = 0.5 	 took  31.226  seconds.
+BB case: trueR =  0.695 	 zrate = 0.56 	 took  32.994  seconds.
+BB case: trueR =  0.695 	 zrate = 0.64 	 took  33.025  seconds.
+BB case: trueR =  0.695 	 zrate = 0.72 	 took  33.454  seconds.
+BB case: trueR =  0.695 	 zrate = 0.84 	 took  35.425  seconds.
+BB case: trueR =  0.695 	 zrate = 0.96 	 took  45.215  seconds.
+BB case: trueR =  0.8025 	 zrate = 0.04 	 took  46.584  seconds.
+BB case: trueR =  0.8025 	 zrate = 0.16 	 took  41.537  seconds.
+BB case: trueR =  0.8025 	 zrate = 0.28 	 took  34.314  seconds.
+BB case: trueR =  0.8025 	 zrate = 0.36 	 took  33.201  seconds.
+BB case: trueR =  0.8025 	 zrate = 0.44 	 took  33.285  seconds.
+BB case: trueR =  0.8025 	 zrate = 0.5 	 took  30.632  seconds.
+BB case: trueR =  0.8025 	 zrate = 0.56 	 took  33.631  seconds.
+BB case: trueR =  0.8025 	 zrate = 0.64 	 took  33.704  seconds.
+BB case: trueR =  0.8025 	 zrate = 0.72 	 took  34.491  seconds.
+BB case: trueR =  0.8025 	 zrate = 0.84 	 took  40.98  seconds.
+BB case: trueR =  0.8025 	 zrate = 0.96 	 took  45.775  seconds.
+BB case: trueR =  0.91 	 zrate = 0.04 	 took  46.718  seconds.
+BB case: trueR =  0.91 	 zrate = 0.16 	 took  45.674  seconds.
+BB case: trueR =  0.91 	 zrate = 0.28 	 took  40.01  seconds.
+BB case: trueR =  0.91 	 zrate = 0.36 	 took  35.217  seconds.
+BB case: trueR =  0.91 	 zrate = 0.44 	 took  34.954  seconds.
+BB case: trueR =  0.91 	 zrate = 0.5 	 took  31.093  seconds.
+BB case: trueR =  0.91 	 zrate = 0.56 	 took  34.342  seconds.
+BB case: trueR =  0.91 	 zrate = 0.64 	 took  35.381  seconds.
+BB case: trueR =  0.91 	 zrate = 0.72 	 took  39.946  seconds.
+BB case: trueR =  0.91 	 zrate = 0.84 	 took  46.247  seconds.
+BB case: trueR =  0.91 	 zrate = 0.96 	 took  47.314  seconds.
+TB case: trueR =  0.05 	 zrate = 0.04 	 took  31.955  seconds.
+TB case: trueR =  0.05 	 zrate = 0.16 	 took  31.62  seconds.
+TB case: trueR =  0.05 	 zrate = 0.28 	 took  32.023  seconds.
+TB case: trueR =  0.05 	 zrate = 0.36 	 took  31.636  seconds.
+TB case: trueR =  0.05 	 zrate = 0.44 	 took  31.754  seconds.
+TB case: trueR =  0.05 	 zrate = 0.5 	 took  31.468  seconds.
+TB case: trueR =  0.05 	 zrate = 0.56 	 took  32.467  seconds.
+TB case: trueR =  0.05 	 zrate = 0.64 	 took  31.817  seconds.
+TB case: trueR =  0.05 	 zrate = 0.72 	 took  32.071  seconds.
+TB case: trueR =  0.05 	 zrate = 0.84 	 took  31.887  seconds.
+TB case: trueR =  0.05 	 zrate = 0.96 	 took  34.34  seconds.
+TB case: trueR =  0.1575 	 zrate = 0.04 	 took  33.071  seconds.
+TB case: trueR =  0.1575 	 zrate = 0.16 	 took  32.12  seconds.
+TB case: trueR =  0.1575 	 zrate = 0.28 	 took  31.889  seconds.
+TB case: trueR =  0.1575 	 zrate = 0.36 	 took  32.16  seconds.
+TB case: trueR =  0.1575 	 zrate = 0.44 	 took  31.524  seconds.
+TB case: trueR =  0.1575 	 zrate = 0.5 	 took  31.652  seconds.
+TB case: trueR =  0.1575 	 zrate = 0.56 	 took  31.741  seconds.
+TB case: trueR =  0.1575 	 zrate = 0.64 	 took  31.736  seconds.
+TB case: trueR =  0.1575 	 zrate = 0.72 	 took  31.364  seconds.
+TB case: trueR =  0.1575 	 zrate = 0.84 	 took  31.742  seconds.
+TB case: trueR =  0.1575 	 zrate = 0.96 	 took  36.206  seconds.
+TB case: trueR =  0.265 	 zrate = 0.04 	 took  32.16  seconds.
+TB case: trueR =  0.265 	 zrate = 0.16 	 took  31.679  seconds.
+TB case: trueR =  0.265 	 zrate = 0.28 	 took  32.132  seconds.
+TB case: trueR =  0.265 	 zrate = 0.36 	 took  31.881  seconds.
+TB case: trueR =  0.265 	 zrate = 0.44 	 took  32.246  seconds.
+TB case: trueR =  0.265 	 zrate = 0.5 	 took  31.937  seconds.
+TB case: trueR =  0.265 	 zrate = 0.56 	 took  31.618  seconds.
+TB case: trueR =  0.265 	 zrate = 0.64 	 took  32.653  seconds.
+TB case: trueR =  0.265 	 zrate = 0.72 	 took  31.503  seconds.
+TB case: trueR =  0.265 	 zrate = 0.84 	 took  32.075  seconds.
+TB case: trueR =  0.265 	 zrate = 0.96 	 took  36.838  seconds.
+TB case: trueR =  0.3725 	 zrate = 0.04 	 took  31.807  seconds.
+TB case: trueR =  0.3725 	 zrate = 0.16 	 took  32.418  seconds.
+TB case: trueR =  0.3725 	 zrate = 0.28 	 took  32.183  seconds.
+TB case: trueR =  0.3725 	 zrate = 0.36 	 took  32.686  seconds.
+TB case: trueR =  0.3725 	 zrate = 0.44 	 took  32.907  seconds.
+TB case: trueR =  0.3725 	 zrate = 0.5 	 took  32.214  seconds.
+TB case: trueR =  0.3725 	 zrate = 0.56 	 took  32.008  seconds.
+TB case: trueR =  0.3725 	 zrate = 0.64 	 took  32.295  seconds.
+TB case: trueR =  0.3725 	 zrate = 0.72 	 took  31.78  seconds.
+TB case: trueR =  0.3725 	 zrate = 0.84 	 took  31.622  seconds.
+TB case: trueR =  0.3725 	 zrate = 0.96 	 took  38.922  seconds.
+TB case: trueR =  0.48 	 zrate = 0.04 	 took  31.935  seconds.
+TB case: trueR =  0.48 	 zrate = 0.16 	 took  31.756  seconds.
+TB case: trueR =  0.48 	 zrate = 0.28 	 took  32.029  seconds.
+TB case: trueR =  0.48 	 zrate = 0.36 	 took  32.274  seconds.
+TB case: trueR =  0.48 	 zrate = 0.44 	 took  31.979  seconds.
+TB case: trueR =  0.48 	 zrate = 0.5 	 took  31.628  seconds.
+TB case: trueR =  0.48 	 zrate = 0.56 	 took  31.718  seconds.
+TB case: trueR =  0.48 	 zrate = 0.64 	 took  31.741  seconds.
+TB case: trueR =  0.48 	 zrate = 0.72 	 took  31.722  seconds.
+TB case: trueR =  0.48 	 zrate = 0.84 	 took  32.237  seconds.
+TB case: trueR =  0.48 	 zrate = 0.96 	 took  40.075  seconds.
+TB case: trueR =  0.5875 	 zrate = 0.04 	 took  31.962  seconds.
+TB case: trueR =  0.5875 	 zrate = 0.16 	 took  31.8  seconds.
+TB case: trueR =  0.5875 	 zrate = 0.28 	 took  32.553  seconds.
+TB case: trueR =  0.5875 	 zrate = 0.36 	 took  32.871  seconds.
+TB case: trueR =  0.5875 	 zrate = 0.44 	 took  31.782  seconds.
+TB case: trueR =  0.5875 	 zrate = 0.5 	 took  32.049  seconds.
+TB case: trueR =  0.5875 	 zrate = 0.56 	 took  31.949  seconds.
+TB case: trueR =  0.5875 	 zrate = 0.64 	 took  32.181  seconds.
+TB case: trueR =  0.5875 	 zrate = 0.72 	 took  31.689  seconds.
+TB case: trueR =  0.5875 	 zrate = 0.84 	 took  33.311  seconds.
+TB case: trueR =  0.5875 	 zrate = 0.96 	 took  42.943  seconds.
+TB case: trueR =  0.695 	 zrate = 0.04 	 took  32.204  seconds.
+TB case: trueR =  0.695 	 zrate = 0.16 	 took  31.783  seconds.
+TB case: trueR =  0.695 	 zrate = 0.28 	 took  31.845  seconds.
+TB case: trueR =  0.695 	 zrate = 0.36 	 took  31.712  seconds.
+TB case: trueR =  0.695 	 zrate = 0.44 	 took  32.791  seconds.
+TB case: trueR =  0.695 	 zrate = 0.5 	 took  32.398  seconds.
+TB case: trueR =  0.695 	 zrate = 0.56 	 took  32.019  seconds.
+TB case: trueR =  0.695 	 zrate = 0.64 	 took  32.063  seconds.
+TB case: trueR =  0.695 	 zrate = 0.72 	 took  31.938  seconds.
+TB case: trueR =  0.695 	 zrate = 0.84 	 took  34.681  seconds.
+TB case: trueR =  0.695 	 zrate = 0.96 	 took  44.689  seconds.
+TB case: trueR =  0.8025 	 zrate = 0.04 	 took  32.201  seconds.
+TB case: trueR =  0.8025 	 zrate = 0.16 	 took  32.447  seconds.
+TB case: trueR =  0.8025 	 zrate = 0.28 	 took  32.685  seconds.
+TB case: trueR =  0.8025 	 zrate = 0.36 	 took  32.575  seconds.
+TB case: trueR =  0.8025 	 zrate = 0.44 	 took  32.407  seconds.
+TB case: trueR =  0.8025 	 zrate = 0.5 	 took  32.078  seconds.
+TB case: trueR =  0.8025 	 zrate = 0.56 	 took  32.311  seconds.
+TB case: trueR =  0.8025 	 zrate = 0.64 	 took  32.055  seconds.
+TB case: trueR =  0.8025 	 zrate = 0.72 	 took  33.658  seconds.
+TB case: trueR =  0.8025 	 zrate = 0.84 	 took  42.068  seconds.
+TB case: trueR =  0.8025 	 zrate = 0.96 	 took  46.393  seconds.
+TB case: trueR =  0.91 	 zrate = 0.04 	 took  33.758  seconds.
+TB case: trueR =  0.91 	 zrate = 0.16 	 took  33.421  seconds.
+TB case: trueR =  0.91 	 zrate = 0.28 	 took  33.378  seconds.
+TB case: trueR =  0.91 	 zrate = 0.36 	 took  33.436  seconds.
+TB case: trueR =  0.91 	 zrate = 0.44 	 took  33.597  seconds.
+TB case: trueR =  0.91 	 zrate = 0.5 	 took  32.427  seconds.
+TB case: trueR =  0.91 	 zrate = 0.56 	 took  33.267  seconds.
+TB case: trueR =  0.91 	 zrate = 0.64 	 took  35.24  seconds.
+TB case: trueR =  0.91 	 zrate = 0.72 	 took  38.035  seconds.
+TB case: trueR =  0.91 	 zrate = 0.84 	 took  47.328  seconds.
+TB case: trueR =  0.91 	 zrate = 0.96 	 took  48.014  seconds.
+> 
+> 
+> 
+> proc.time()
+     user    system   elapsed 
+12988.952  5773.092 18790.215 
