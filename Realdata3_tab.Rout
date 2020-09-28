@@ -1,0 +1,394 @@
+> # check real data results
+> # to check accuracy & computation time of multilinear approximation
+> 
+> rm(list = ls())
+> 
+> # devtools::install_github("irinagain/mixedCCA", force = TRUE) # version 1.4.1
+> # devtools::install_github("GraceYoon/SPRING", force = TRUE)
+> 
+> library(microbenchmark)
+> library(SPRING) # for QMP data
+> library(mixedCCA)
+Loading required package: MASS
+> 
+> # set up to save results
+> CompRes <- matrix(NA, nrow = 3, ncol = 3)
+> rownames(CompRes) <- c("ORG", "MLBD", "Kendall")
+> colnames(CompRes) <- c("QMP", "AGP", "TCGA-BRCA")
+> 
+> AccRes <- matrix(NA, nrow = 2, ncol = 3)
+> rownames(AccRes) <- c("Max AE", "Mean AE")
+> colnames(AccRes) <- c("QMP", "AGP", "TCGA-BRCA")
+> 
+> 
+> #################################################
+> ####### for QMP data in SPRING package
+> 
+> colLoc <- 1 # QMP data result needs to be saved in 1st column
+> 
+> 
+> CompRes[1, colLoc] <- print(microbenchmark(Kcor_QMP_org <- estimateR(QMP, type = "trunc", method = "original", tol = 1e-6, verbose = TRUE)$R, times= 10), unit = "s")[, 5]
+ minimum eigenvalue of correlation estimator is -0.295803204097579
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.295803204097579
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.295803204097579
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.295803204097579
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.295803204097579
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.295803204097579
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.295803204097579
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.295803204097579
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.295803204097579
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.295803204097579
+ nearPD is used
+Unit: seconds
+                                                                                                    expr
+ Kcor_QMP_org <- estimateR(QMP, type = "trunc", method = "original",      tol = 1e-06, verbose = TRUE)$R
+      min       lq     mean   median       uq      max neval
+ 59.43431 59.52798 60.02691 59.62506 60.14527 61.88635    10
+> 
+> CompRes[2, colLoc] <- print(microbenchmark(Kcor_QMP_fast <- estimateR(QMP, type = "trunc", method = "approx", tol = 1e-6, verbose = TRUE)$R, times= 100), unit = "s")[, 5]
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.296269374063284
+ nearPD is used
+Unit: seconds
+                                                                                                   expr
+ Kcor_QMP_fast <- estimateR(QMP, type = "trunc", method = "approx",      tol = 1e-06, verbose = TRUE)$R
+       min        lq      mean    median        uq      max neval
+ 0.9499043 0.9657993 0.9763208 0.9669371 0.9684997 1.095638   100
+> 
+> CompRes[3, colLoc] <- print(microbenchmark(Kendall_QMP <- Kendall_matrix(QMP), times = 100), unit = "s")[, 5]
+Unit: seconds
+                               expr       min        lq     mean    median
+ Kendall_QMP <- Kendall_matrix(QMP) 0.9225691 0.9352443 0.943122 0.9407628
+        uq      max neval
+ 0.9424365 1.056351   100
+> 
+> 
+> AccRes[1, colLoc] <- max(abs(c(Kcor_QMP_fast - Kcor_QMP_org)))
+> AccRes[2, colLoc] <- mean(abs(c(Kcor_QMP_fast - Kcor_QMP_org)))
+> 
+> #################################################
+> ###### for AGP data
+> load("Data/amgutpruned.rdata")
+> 
+> colLoc <- 2 # AGP data result needs to be saved in 1st column
+> 
+> CompRes[1, colLoc] <- print(microbenchmark(Kcor_amgut_org <- estimateR(amgutpruned, type = "trunc", method = "original", tol = 1e-6, verbose = TRUE)$R, times = 1), unit = "s")[, 5]
+ minimum eigenvalue of correlation estimator is -0.125461180726056
+ nearPD is used
+Unit: seconds
+                                                                                                              expr
+ Kcor_amgut_org <- estimateR(amgutpruned, type = "trunc", method = "original",      tol = 1e-06, verbose = TRUE)$R
+      min       lq     mean   median       uq      max neval
+ 3459.051 3459.051 3459.051 3459.051 3459.051 3459.051     1
+> 
+> CompRes[2, colLoc] <- print(microbenchmark(Kcor_amgut_fast <- estimateR(amgutpruned, type = "trunc", method = "approx", tol = 1e-6, verbose = TRUE)$R, times = 10), unit = "s")[, 5]
+ minimum eigenvalue of correlation estimator is -0.126168415247927
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.126168415247927
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.126168415247927
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.126168415247927
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.126168415247927
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.126168415247927
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.126168415247927
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.126168415247927
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.126168415247927
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.126168415247927
+ nearPD is used
+Unit: seconds
+                                                                                                             expr
+ Kcor_amgut_fast <- estimateR(amgutpruned, type = "trunc", method = "approx",      tol = 1e-06, verbose = TRUE)$R
+      min      lq     mean   median       uq      max neval
+ 319.5397 319.876 320.6286 320.5568 321.2906 322.2692    10
+> 
+> CompRes[3, colLoc] <- print(microbenchmark(Kendall_amgut <- Kendall_matrix(amgutpruned), times = 10), unit = "s")[, 5]
+Unit: seconds
+                                         expr      min       lq     mean
+ Kendall_amgut <- Kendall_matrix(amgutpruned) 317.9648 318.0715 318.0702
+   median       uq      max neval
+ 318.0888 318.0997 318.1108    10
+> 
+> AccRes[1, colLoc] <- max(abs(c(Kcor_amgut_fast - Kcor_amgut_org)))
+> AccRes[2, colLoc] <- mean(abs(c(Kcor_amgut_fast - Kcor_amgut_org)))
+> 
+> 
+> #################################################
+> ###### for TCGA-BRCA data
+> load("Data/matchedTCGA.Rdata")
+> 
+> colLoc <- 3 # TCGA-BRCA data result needs to be saved in 3rd column
+> 
+> CompRes[1, colLoc] <- print(microbenchmark(Kcor_TCGA_org <- estimateR_mixed(X1 = matchedTCGA$X1, X2 = matchedTCGA$X2, type1 = "continuous", type2 = "trunc", method = "original", tol = 1e-6, verbose = TRUE)$R, times = 1), unit = "s")[, 5]
+ minimum eigenvalue of correlation estimator is -0.511356531373121
+ nearPD is used
+Unit: seconds
+                                                                                                                                                                            expr
+ Kcor_TCGA_org <- estimateR_mixed(X1 = matchedTCGA$X1, X2 = matchedTCGA$X2,      type1 = "continuous", type2 = "trunc", method = "original",      tol = 1e-06, verbose = TRUE)$R
+      min       lq     mean   median       uq      max neval
+ 2039.516 2039.516 2039.516 2039.516 2039.516 2039.516     1
+> 
+> CompRes[2, colLoc] <- print(microbenchmark(Kcor_TCGA_fast <- estimateR_mixed(X1 = matchedTCGA$X1, X2 = matchedTCGA$X2, type1 = "continuous", type2 = "trunc", method = "approx", tol = 1e-6, verbose = TRUE)$R, times = 10), unit = "s")[, 5]
+ minimum eigenvalue of correlation estimator is -0.511424891943142
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.511424891943142
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.511424891943142
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.511424891943142
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.511424891943142
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.511424891943142
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.511424891943142
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.511424891943142
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.511424891943142
+ nearPD is used
+ minimum eigenvalue of correlation estimator is -0.511424891943142
+ nearPD is used
+Unit: seconds
+                                                                                                                                                                           expr
+ Kcor_TCGA_fast <- estimateR_mixed(X1 = matchedTCGA$X1, X2 = matchedTCGA$X2,      type1 = "continuous", type2 = "trunc", method = "approx",      tol = 1e-06, verbose = TRUE)$R
+      min       lq     mean   median       uq      max neval
+ 244.3523 244.8287 245.1908 245.1322 245.3319 246.0361    10
+> 
+> 
+> KendallTC <- function(X1, X2){
++    K1 <- pcaPP::cor.fk(X1)
++    K2 <- Kendall_matrix(X2)
++    K12 <- Kendall_matrix(X1, X2)
++    return(rbind(cbind(K1, K12), cbind(t(K12), K2)))
++ }
+> 
+> CompRes[3, colLoc] <- print(microbenchmark(Kendall_TCGA <- KendallTC(matchedTCGA$X1, matchedTCGA$X2), times = 10), unit = "s")[, 5]
+Unit: seconds
+                                                      expr      min       lq
+ Kendall_TCGA <- KendallTC(matchedTCGA$X1, matchedTCGA$X2) 200.1983 200.2162
+     mean   median       uq      max neval
+ 200.2713 200.2653 200.3163 200.3803    10
+> 
+> 
+> AccRes[1, colLoc] <- max(abs(c(Kcor_TCGA_fast - Kcor_TCGA_org)))
+> AccRes[2, colLoc] <- mean(abs(c(Kcor_TCGA_fast - Kcor_TCGA_org)))
+> 
+> 
+> save(Kcor_QMP_org, Kcor_QMP_fast, Kcor_amgut_org, Kcor_amgut_fast, Kcor_TCGA_org, Kcor_TCGA_fast, Kendall_QMP, Kendall_amgut, Kendall_TCGA, CompRes, AccRes, file = "Data/Realdata3_tab.Rda")
+> 
+> proc.time()
+     user    system   elapsed 
+17135.901     4.188 17139.196 
