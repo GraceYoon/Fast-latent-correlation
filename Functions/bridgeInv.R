@@ -1,4 +1,3 @@
-
 ############################################################################################
 # For multilinear interpolation approximation for bridge Inverse
 ############################################################################################
@@ -10,14 +9,15 @@ NULL
 # Cutoff criteria based on the combination of variable types
 ############################################################################################
 
-cutoff_bb <- function(zratio1, zratio2){0.9*2*pmin(zratio1, zratio2)*(1-pmax(zratio1, zratio2)) }
-cutoff_tt <- function(zratio1, zratio2){ 0.9*(1-pmax(zratio1, zratio2)^2) }
-cutoff_tc <- function(zratio1, zratio2 = NULL){ 0.9*(1 - zratio1^2) }
-cutoff_ct <- function(zratio1 = NULL, zratio2){ 0.9*(1 - zratio2^2) }
-cutoff_bc <- function(zratio1, zratio2 = NULL){ 0.9*2*zratio1*(1 - zratio1) }
-cutoff_cb <- function(zratio1 = NULL, zratio2){ 0.9*2*zratio2*(1 - zratio2) }
-cutoff_tb <- function(zratio1, zratio2){ 0.9*pmin(1-zratio1^2, 2*zratio2*(1 - zratio2)) }
-cutoff_bt <- function(zratio1, zratio2){ 0.9*pmin(2*zratio1*(1 - zratio1), 1-zratio2^2) }
+cutoff_bb <- function(zratio1, zratio2){0.9 * 2 * pmin(zratio1, zratio2)*(1-pmax(zratio1, zratio2))}
+cutoff_tt <- function(zratio1, zratio2){0.9 * (1 - pmax(zratio1, zratio2)^2)}
+cutoff_tc <- function(zratio1, zratio2 = NULL){0.9 * (1 - zratio1^2)}
+cutoff_ct <- function(zratio1 = NULL, zratio2){0.9 * (1 - zratio2^2)}
+cutoff_bc <- function(zratio1, zratio2 = NULL){0.9 * 2 * zratio1 * (1 - zratio1)}
+cutoff_cb <- function(zratio1 = NULL, zratio2){0.9 * 2 * zratio2 * (1 - zratio2) }
+
+cutoff_tb <- function(zratio1, zratio2){0.9 * 2 * pmax(zratio2, 1 - zratio2) * (1 - pmax(zratio2, 1 - zratio2, zratio1))}
+cutoff_bt <- function(zratio1, zratio2){0.9 * 2 * pmax(zratio1, 1 - zratio1) * (1 - pmax(zratio1, 1 - zratio1, zratio2))}
 
 
 cutoff_select <- function(type1, type2){
@@ -43,6 +43,7 @@ cutoff_select <- function(type1, type2){
 }
 
 
+
 ############################################################################################
 # Select which bridge inverse function based on the combinatino of variable types
 ############################################################################################
@@ -62,7 +63,7 @@ bridgeInv_select <- function(type1, type2) {
 }
 
 
-# wrapper function to make matrix and vector input available and allow the different order of the combination too.
+# wrapper functions
 bridgeInv_tc <- function(tau, zratio1, zratio2 = NULL){
   out <- TCipol(rbind(tau, zratio1))
   return(out)
@@ -73,13 +74,15 @@ bridgeInv_ct <- function(tau, zratio1 = NULL, zratio2){
   return(out)
 }
 
-# wrapper function to use matrix and vectors as inputs.
+
+# wrapper function
 bridgeInv_tt <- function(tau, zratio1, zratio2){
   out <- TTipol(rbind(tau, zratio1, zratio2))
   return(out)
 }
 
-# wrapper function to use matrix and vectors as inputs.
+
+# wrapper functions
 bridgeInv_tb <- function(tau, zratio1, zratio2){
   out <- TBipol(rbind(tau, zratio1, zratio2))
   return(out)
@@ -91,7 +94,7 @@ bridgeInv_bt <- function(tau, zratio1, zratio2){
 }
 
 
-# wrapper function to make matrix and vector input available.
+# wrapper function
 bridgeInv_bc <- function(tau, zratio1, zratio2 = NULL){
   out <- BCipol(rbind(tau, zratio1))
   return(out)
@@ -102,7 +105,7 @@ bridgeInv_cb <- function(tau, zratio1 = NULL, zratio2){
   return(out)
 }
 
-# wrapper function to use matrix and vectors as inputs.
+# wrapper function
 bridgeInv_bb <- function(tau, zratio1, zratio2){
   out <- BBipol(rbind(tau, zratio1, zratio2))
   return(out)
