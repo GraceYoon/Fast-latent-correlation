@@ -1,5 +1,13 @@
+### WARNING: the script requires first pre-loading the .txt TCGA files from the TCGA dat a portal. The link is here "https://gdc.cancer.gov/about-data/publications/brca_2012/" (accessed 06/07/2020). The script will not run without those files
+
+## Required files
+# - BRCA.exp.547.med.txt (RNA expression)
+# - BRCA.780.precursor.txt (miRNA expression)
+
+
+
 rm(list=ls())
-###Load the data.  Each file can be downloaded from the TCGA Data Portal at link "https://gdc.cancer.gov/about-data/publications/brca_2012/" (accessed 06/07/2020)
+
 
 library(data.table)
 rna_file_name <- "BRCA.exp.547.med.txt"
