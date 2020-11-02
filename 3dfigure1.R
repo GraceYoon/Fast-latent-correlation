@@ -7,6 +7,10 @@
 
 rm(list=ls())
 
+# Install plotly package if not available
+install.packages("plotly")
+# using plotly package, we can create 3d figure.
+library(plotly)
 
 # load the data for TC case example
 load("Data/tcInv_equigrid.Rda") # precomputed results. contained gridTCinv and z1.
@@ -17,8 +21,7 @@ load("Data/tcInv_equigrid.Rda") # precomputed results. contained gridTCinv and z
 TCvalue <- matrix(unlist(gridTCinv), ncol = length(z1), byrow = FALSE)
 
 
-# using plotly package, we can create 3d figure.
-library(plotly)
+
 
 plot_ly(z = t(TCvalue), colorbar = list(tickmode = "array", tickvals = c(-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1), x = 0.82, y = 0.75)) %>% # tickvals and x and y are for legend ticks and location.
   add_surface(opacity = 0.9) %>% # for 3d figure, we need to add surface.
