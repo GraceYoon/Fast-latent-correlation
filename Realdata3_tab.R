@@ -1,8 +1,9 @@
-# check real data results
-# to check accuracy & computation time of multilinear approximation
+# Compare the results (accuracy and computation time) on 3 real datasets
+# WARNING: this will take a couple of hours to run as original method takes a lot of time on real data
 
 rm(list = ls())
 
+# Install the required packages first
 # devtools::install_github("irinagain/mixedCCA", force = TRUE) # version 1.4.1
 # devtools::install_github("GraceYoon/SPRING", force = TRUE)
 
