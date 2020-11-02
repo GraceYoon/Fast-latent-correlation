@@ -1,11 +1,17 @@
 # Section 4. Comparison on simulated data
 # This is for two variables.
 
+## WARNING: This simulation will take time several hours to run as 100 repetitions are considered for each combination of variable pairs
+
 rm(list=ls())
 
+# Install the packages first if needed
 library(chebpol)
 library(microbenchmark)
+# Most recent development version
 # devtools::install_github("irinagain/mixedCCA", force = TRUE) # version 1.4.1
+# CRAN version
+# install.packages("mixedCCA")
 library(mixedCCA)
 
 source("TwoVariable_simulation_functions.R")
@@ -132,5 +138,3 @@ for (cases in 1:5){
   
   
 }
-
-
